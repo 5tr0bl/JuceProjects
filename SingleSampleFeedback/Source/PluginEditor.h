@@ -19,7 +19,7 @@ class SingleSampleFeedbackAudioProcessorEditor  : public juce::AudioProcessorEdi
                                                   public juce::Slider::Listener
 {
 public:
-    SingleSampleFeedbackAudioProcessorEditor (SingleSampleFeedbackAudioProcessor&);
+    SingleSampleFeedbackAudioProcessorEditor (SingleSampleFeedbackAudioProcessor& p, AudioProcessorValueTreeState& apvts);
     ~SingleSampleFeedbackAudioProcessorEditor() override;
 
     //==============================================================================
@@ -28,21 +28,16 @@ public:
 
     void sliderValueChanged(juce::Slider* slider) override
     {
-        if (slider == &frequencySlider)
-        {
-            audioProcessor.frequency_main = frequencySlider.getValue();
-            audioProcessor.wavetables[0]->setFrequency(frequencySlider.getValue(), audioProcessor.current_samplerate);
-        }
-        else if (slider == &modFreqSlider)
+        if (slider == &modFreqSlider)
         {
             audioProcessor.frequency_mod = modFreqSlider.getValue() * powf(10, modFreq2Slider.getValue());
-            audioProcessor.mod.setFrequency(audioProcessor.frequency_mod, audioProcessor.current_samplerate);
+            audioProcessor.mod.setFrequency(audioProcessor.frequency_mod, audioProcessor.current_samplerate->load());
             modFreqTextResultButton.setButtonText(juce::String(audioProcessor.frequency_mod) + " HZ");
         }
         else if (slider == &modFreq2Slider)
         {
             audioProcessor.frequency_mod = modFreqSlider.getValue() * powf(10, modFreq2Slider.getValue());
-            audioProcessor.mod.setFrequency(audioProcessor.frequency_mod, audioProcessor.current_samplerate);
+            audioProcessor.mod.setFrequency(audioProcessor.frequency_mod, audioProcessor.current_samplerate->load());
             modFreqTextResultButton.setButtonText(juce::String(audioProcessor.frequency_mod) + " HZ");
         }
         else if (slider == &ampSlider)
@@ -57,17 +52,23 @@ public:
 
 private:
     SingleSampleFeedbackAudioProcessor& audioProcessor;
-    juce::Slider frequencySlider;
+    juce::Slider freqCarrierSlider;
     juce::Slider modFreqSlider;
     juce::Slider modFreq2Slider;
     juce::Slider ampSlider;
     juce::Slider feedbackAmount;
+    juce::Slider feebackBlockSizeSlider;
+    juce::ToggleButton tanhClippingToggle;
 
     juce::TextButton pitchTextButton;
     juce::TextButton modFreqTextButton;
     juce::TextButton modFreqTextResultButton;
     juce::TextButton ampTextButton;
     juce::TextButton feedbackTextButton;
+
+	std::unique_ptr<juce::SliderParameterAttachment> freqCarrierSliderAttachment;
+    std::unique_ptr<juce::SliderParameterAttachment> feedbackBlockSizeAttachment;
+    std::unique_ptr<juce::ParameterAttachment> tanhClippingToggleAttachment;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SingleSampleFeedbackAudioProcessorEditor)
 };

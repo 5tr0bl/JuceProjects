@@ -2,15 +2,19 @@
 
 <JUCERPROJECT id="RXUnyQ" name="SingleSampleFeedback" projectType="audioplug"
               useAppConfig="0" displaySplashScreen="1" jucerFormatVersion="1"
-              companyName="Micha" pluginFormats="buildVST3" pluginCharacteristicsValue="pluginIsSynth,pluginWantsMidiIn">
+              companyName="Micha" pluginFormats="buildStandalone,buildVST3"
+              pluginCharacteristicsValue="pluginIsSynth,pluginWantsMidiIn">
   <MAINGROUP id="KcItBn" name="SingleSampleFeedback">
     <GROUP id="{C02F0D73-6E0E-9E95-B78B-38250E59BD1B}" name="Source">
       <FILE id="NpyN88" name="PluginProcessor.cpp" compile="1" resource="0"
             file="Source/PluginProcessor.cpp"/>
+      <FILE id="fPVNcV" name="TanhLookupTable.h" compile="0" resource="0"
+            file="Source/TanhLookupTable.h"/>
       <FILE id="JE5Krg" name="PluginProcessor.h" compile="0" resource="0"
             file="Source/PluginProcessor.h"/>
       <FILE id="uKdqQf" name="PluginEditor.cpp" compile="1" resource="0"
             file="Source/PluginEditor.cpp"/>
+      <FILE id="CtAYYC" name="WaveTable.h" compile="0" resource="0" file="Source/WaveTable.h"/>
       <FILE id="gUCvzF" name="PluginEditor.h" compile="0" resource="0" file="Source/PluginEditor.h"/>
     </GROUP>
   </MAINGROUP>

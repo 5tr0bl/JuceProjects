@@ -1,7 +1,8 @@
 /*
   ==============================================================================
 
-    This file contains the basic framework code for a JUCE plugin editor.
+    Note that createEditor() in PluginProcessor.cpp has been extended to also pass down
+    the parameters/AudioProcessorValueTreeState.
 
   ==============================================================================
 */
@@ -10,11 +11,27 @@
 #include "PluginEditor.h"
 
 //==============================================================================
-SingleSampleFeedbackAudioProcessorEditor::SingleSampleFeedbackAudioProcessorEditor (SingleSampleFeedbackAudioProcessor& p)
+SingleSampleFeedbackAudioProcessorEditor::SingleSampleFeedbackAudioProcessorEditor (SingleSampleFeedbackAudioProcessor& p, AudioProcessorValueTreeState& apvts)
     : AudioProcessorEditor (&p), audioProcessor (p)
 {
     setSize (600, 400);
-    addAndMakeVisible(frequencySlider);
+	setResizable(true, true);
+
+    // Carrier Frequency Slider
+    addAndMakeVisible(freqCarrierSlider);
+    freqCarrierSlider.setRange(50.0, 15000.0);
+    freqCarrierSlider.setSkewFactorFromMidPoint(5000.0);
+	freqCarrierSlider.setValue(440.0);
+    freqCarrierSlider.setTextValueSuffix(" Hz");
+    freqCarrierSliderAttachment.reset(new SliderParameterAttachment(*apvts.getParameter("freq_carrier"), freqCarrierSlider));
+
+	// Feedback Block Size
+	addAndMakeVisible(feebackBlockSizeSlider);
+	feebackBlockSizeSlider.setRange(1, 128, 1);
+	feebackBlockSizeSlider.setSliderStyle(Slider::SliderStyle::RotaryHorizontalVerticalDrag);
+	feebackBlockSizeSlider.setValue(64);
+	feedbackBlockSizeAttachment.reset(new SliderParameterAttachment(*apvts.getParameter("fb_block_size"), feebackBlockSizeSlider));
+
     addAndMakeVisible(modFreqSlider);
     addAndMakeVisible(modFreq2Slider);
     addAndMakeVisible(ampSlider);
@@ -31,24 +48,20 @@ SingleSampleFeedbackAudioProcessorEditor::SingleSampleFeedbackAudioProcessorEdit
     feedbackTextButton.setButtonText("Feedback");
     addAndMakeVisible(feedbackTextButton);
 
-    frequencySlider.setRange(50.0, 5000.0);
     modFreqSlider.setRange(-2.0, 5.0);
     modFreq2Slider.setRange(0.0, 1.0);
     ampSlider.setRange(0.0, 0.5);
     feedbackAmount.setRange(0.0, 3.0);
     //ampSlider.setSliderStyle(Slider::SliderStyle::RotaryHorizontalVerticalDrag);
     //feedbackAmount.setSliderStyle(Slider::SliderStyle::RotaryHorizontalVerticalDrag);
-    frequencySlider.setSkewFactorFromMidPoint(500.0);
     modFreqSlider.setSkewFactorFromMidPoint(0.0);
-    frequencySlider.setTextValueSuffix(" Hz");
     modFreqSlider.setTextValueSuffix(" Hz");
-    frequencySlider.addListener(this);
+
+    // remove these Sliders
     modFreqSlider.addListener(this);
     modFreq2Slider.addListener(this);
     ampSlider.addListener(this);
     feedbackAmount.addListener(this);
-
-
 }
 
 SingleSampleFeedbackAudioProcessorEditor::~SingleSampleFeedbackAudioProcessorEditor()
@@ -71,15 +84,16 @@ void SingleSampleFeedbackAudioProcessorEditor::resized()
 {
     auto area = getLocalBounds();
     auto sidebarArea = area.removeFromLeft(area.getWidth() / 5);
-    auto lineHeight = 40;
+    auto lineHeight = static_cast<int>(area.getHeight() / 10);
 
     pitchTextButton.setBounds(sidebarArea.removeFromTop(lineHeight));
     modFreqTextButton.setBounds(sidebarArea.removeFromTop(lineHeight));
     modFreqTextResultButton.setBounds(sidebarArea.removeFromTop(lineHeight));
     ampTextButton.setBounds(sidebarArea.removeFromTop(lineHeight));
     feedbackTextButton.setBounds(sidebarArea.removeFromTop(lineHeight));
+	feebackBlockSizeSlider.setBounds(sidebarArea.removeFromTop(lineHeight));
 
-    frequencySlider.setBounds(area.removeFromTop(lineHeight));
+    freqCarrierSlider.setBounds(area.removeFromTop(lineHeight));
     modFreqSlider.setBounds(area.removeFromTop(lineHeight));
     modFreq2Slider.setBounds(area.removeFromTop(lineHeight));
     ampSlider.setBounds(area.removeFromTop(lineHeight));

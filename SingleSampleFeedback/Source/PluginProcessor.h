@@ -9,6 +9,7 @@
 #pragma once
 
 #include <JuceHeader.h>
+#include "TanhLookupTable.h"
 
 class SineOscillator
 {
@@ -100,10 +101,7 @@ private:
 //==============================================================================
 /**
 */
-class SingleSampleFeedbackAudioProcessor  : public juce::AudioProcessor
-                            #if JucePlugin_Enable_ARA
-                             , public juce::AudioProcessorARAExtension
-                            #endif
+class SingleSampleFeedbackAudioProcessor  : public juce::AudioProcessor, public juce::AudioProcessorValueTreeState::Listener
 {
 public:
     //==============================================================================
@@ -143,18 +141,23 @@ public:
     void getStateInformation (juce::MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
 
-    int blockSize = 64;
-    AudioBuffer<float> pre_block = AudioBuffer<float>(2, blockSize);
-    void setBlockSize(int value)
+    /**
+    *   Refers to the feedback buffer's block size
+    */
+    std::atomic<int>* blockSize;
+    AudioBuffer<float> pre_block;
+    void setFeedbackBlockSize(int numChannels)
     {
-        blockSize = value;
+        int blockSizeInt = static_cast<int>(blockSize->load());
+        pre_block.setSize(numChannels, blockSizeInt, true);
         pre_block.clear();
-        pre_block.setSize(2, value, true);
     }
 
+    std::atomic<float>* current_samplerate;
+    std::atomic<float>* freqCarrier;
+    std::atomic<bool>* tanhClippingEnabled;
 
-    float current_samplerate = 44100.f;
-    double frequency_main = 440, frequency_mod = 30;
+    double frequency_mod = 30;
     //double currentAngle_main = 0.0, angleDelta_main = 0.0;
     //double currentAngle_mod = 0.0, angleDelta__mod = 0.0;
     
@@ -165,8 +168,22 @@ public:
     SineOscillator mod;
     SmoothedValue<float> level = 0.25f;
     SmoothedValue<float> feedback = 0.0f;
+
+	AudioProcessorValueTreeState parameters;
+	AudioProcessorValueTreeState::ParameterLayout createParameterLayout()
+	{
+        return { 
+            std::make_unique<AudioParameterFloat>("freq_carrier", "Carrier Frequency", 50.0f, 15000.0f, 440.0f),
+			std::make_unique<AudioParameterInt>("fb_block_size", "Block Size", 1, 128, 64),
+			std::make_unique<AudioParameterBool>("tanh_clipping", "Tanh Clipping", false)
+        };
+	}
+
+    void parameterChanged(const juce::String& parameterID, float newValue) override;
 private:
     //==============================================================================
+    TanhLookupTable tanhLUT;
+    
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SingleSampleFeedbackAudioProcessor)
 };
 

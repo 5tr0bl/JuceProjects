@@ -20,9 +20,22 @@ SingleSampleFeedbackAudioProcessor::SingleSampleFeedbackAudioProcessor()
                       #endif
                        .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
                      #endif
-                       )
+	 ), parameters(*this, nullptr, "Parameters", createParameterLayout()),
+        tanhLUT(TanhLookupTable(-3.f, 3.f, 1024))
 #endif
 {
+    // Initialize variables that are not tied to audio parameters
+    current_samplerate = new std::atomic<float>(44100.f);
+
+    // Initialize variables that are tied to audio parameters
+    blockSize = new std::atomic<int>(64);
+    pre_block = AudioBuffer<float>(2, static_cast<int>(blockSize->load()));
+	freqCarrier = new std::atomic<float>(440.f);
+	tanhClippingEnabled = new std::atomic<bool>(false);
+
+    parameters.addParameterListener("freq_carrier", this);
+    parameters.addParameterListener("fb_block_size", this);
+	parameters.addParameterListener("tanh_clipping", this);
 }
 
 SingleSampleFeedbackAudioProcessor::~SingleSampleFeedbackAudioProcessor()
@@ -94,16 +107,20 @@ void SingleSampleFeedbackAudioProcessor::changeProgramName (int index, const juc
 //==============================================================================
 void SingleSampleFeedbackAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
-    pre_block.clear();
+    current_samplerate->store(static_cast<float>(sampleRate));
+    
+    //pre_block.setSize(getNumOutputChannels(), samplesPerBlock, true, true, true); // change to custom block size
+    setFeedbackBlockSize(getNumOutputChannels());
     
     /*          Sine Carrier
     auto * osc_main = new SineOscillator();
     osc_main->setFrequency(frequency_main, sampleRate);
     osc_main->updateAngle();*/
 
+    // Do not allocate the wavetables like this
     const unsigned int tableSize = 1 << 7; // 128
     auto* osc_main = new SawWave(tableSize);
-    osc_main->setFrequency(frequency_main, sampleRate);
+    osc_main->setFrequency(freqCarrier->load(), sampleRate);
     //osc_main->fillWavetable();
     wavetables.add(osc_main);
     auto* osc_mod = new SineOscillator();
@@ -154,10 +171,13 @@ void SingleSampleFeedbackAudioProcessor::processBlock (juce::AudioBuffer<float>&
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, buffer.getNumSamples());
 
+	int blockSizeLocal = static_cast<int>(blockSize->load());
+
     auto* leftBuffer = buffer.getWritePointer(0, 0);
     auto* rightBuffer = buffer.getWritePointer(1, 0);
     auto* fb_left = pre_block.getWritePointer(0, 0);
     auto* fb_right = pre_block.getWritePointer(1, 0);
+
     auto* oscillatorMain = wavetables.getUnchecked(0);
     SineOscillator* oscillatorMod = &mod;
     auto feedbackValue = feedback.getCurrentValue();
@@ -168,14 +188,14 @@ void SingleSampleFeedbackAudioProcessor::processBlock (juce::AudioBuffer<float>&
         auto levelSample = oscillatorMain->getNextSample();
         auto modSample = oscillatorMod->getNextSample();
         leftBuffer[sample] = levelSample;
-        leftBuffer[sample] *= (modSample + (fb_left[sample % blockSize] * feedbackValue));
-        leftBuffer[sample] = std::tanh(leftBuffer[sample]);
-        fb_left[sample % blockSize] = leftBuffer[sample];
+        leftBuffer[sample] *= (modSample + (fb_left[sample % blockSizeLocal] * feedbackValue));
+        leftBuffer[sample] = tanhLUT.getValue(leftBuffer[sample]);
+        fb_left[sample % blockSizeLocal] = leftBuffer[sample];
         leftBuffer[sample] *= levelValue;
         rightBuffer[sample] = levelSample;
-        rightBuffer[sample] *= (modSample + (fb_right[sample % blockSize] * feedbackValue));
-        rightBuffer[sample] = std::tanh(rightBuffer[sample]);
-        fb_right[sample % blockSize] = rightBuffer[sample];
+        rightBuffer[sample] *= (modSample + (fb_right[sample % blockSizeLocal] * feedbackValue));
+        rightBuffer[sample] = tanhLUT.getValue(rightBuffer[sample]);
+        fb_right[sample % blockSizeLocal] = rightBuffer[sample];
         rightBuffer[sample] *= levelValue;
     }
 }
@@ -186,9 +206,12 @@ bool SingleSampleFeedbackAudioProcessor::hasEditor() const
     return true; // (change this to false if you choose to not supply an editor)
 }
 
+/**
+*   The Editor's standard constructor has been modified to also pass down the apvts.
+*/
 juce::AudioProcessorEditor* SingleSampleFeedbackAudioProcessor::createEditor()
 {
-    return new SingleSampleFeedbackAudioProcessorEditor (*this);
+    return new SingleSampleFeedbackAudioProcessorEditor (*this, parameters);
 }
 
 //==============================================================================
@@ -203,6 +226,31 @@ void SingleSampleFeedbackAudioProcessor::setStateInformation (const void* data, 
 {
     // You should use this method to restore your parameters from this memory block,
     // whose contents will have been created by the getStateInformation() call.
+}
+
+void SingleSampleFeedbackAudioProcessor::parameterChanged(const juce::String& parameterID, float newValue)
+{
+	if (parameterID == "freq_carrier")
+	{
+		auto* freqCarrierParam = parameters.getRawParameterValue("freq_carrier");
+        freqCarrier->store(freqCarrierParam->load());
+		wavetables[0]->setFrequency(freqCarrier->load(), current_samplerate->load());
+	}
+    else if (parameterID == "fb_block_size")
+    {
+        auto* blockSizeParam = parameters.getRawParameterValue("fb_block_size");
+        blockSize->store(static_cast<int>(blockSizeParam->load()));
+        setFeedbackBlockSize(getNumOutputChannels());
+    }
+    else if (parameterID == "tanh_clipping")
+    {
+        auto* tanhClippingParam = parameters.getRawParameterValue("tanh_clipping");
+		tanhClippingEnabled->store(static_cast<bool>(tanhClippingParam->load()));
+    }
+	else
+	{
+		jassertfalse; // unknown parameter
+	}
 }
 
 //==============================================================================
