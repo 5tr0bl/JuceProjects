@@ -6,6 +6,7 @@
               pluginCharacteristicsValue="pluginIsSynth,pluginWantsMidiIn">
   <MAINGROUP id="KcItBn" name="SingleSampleFeedback">
     <GROUP id="{C02F0D73-6E0E-9E95-B78B-38250E59BD1B}" name="Source">
+      <FILE id="RNUIZx" name="WaveTable.cpp" compile="1" resource="0" file="Source/WaveTable.cpp"/>
       <FILE id="NpyN88" name="PluginProcessor.cpp" compile="1" resource="0"
             file="Source/PluginProcessor.cpp"/>
       <FILE id="fPVNcV" name="TanhLookupTable.h" compile="0" resource="0"

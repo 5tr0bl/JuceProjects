@@ -30,15 +30,22 @@ public:
     {
         if (slider == &modFreqSlider)
         {
-            audioProcessor.frequency_mod = modFreqSlider.getValue() * powf(10, modFreq2Slider.getValue());
-            audioProcessor.mod.setFrequency(audioProcessor.frequency_mod, audioProcessor.current_samplerate->load());
-            modFreqTextResultButton.setButtonText(juce::String(audioProcessor.frequency_mod) + " HZ");
+            //auto * osc_mod = audioProcessor.carriers[audioProcessor.activeModulatorIndex].get();
+            //
+            //// manually updating the param in the preocessor. will be obsolete as soon as parameters gets ported to apvts
+            //audioProcessor.frequency_mod = modFreqSlider.getValue() * powf(10, modFreq2Slider.getValue());
+            //osc_mod->setFrequency(audioProcessor.frequency_mod, audioProcessor.current_samplerate.load());
+            //modFreqTextResultButton.setButtonText(juce::String(audioProcessor.frequency_mod) + " HZ");
         }
+			// Why is this here accessing the same frequency_mod? as above???
         else if (slider == &modFreq2Slider)
         {
-            audioProcessor.frequency_mod = modFreqSlider.getValue() * powf(10, modFreq2Slider.getValue());
-            audioProcessor.mod.setFrequency(audioProcessor.frequency_mod, audioProcessor.current_samplerate->load());
-            modFreqTextResultButton.setButtonText(juce::String(audioProcessor.frequency_mod) + " HZ");
+   //         auto* osc_mod = audioProcessor.carriers[audioProcessor.activeModulatorIndex].get();
+   //         
+			//// manually updating the param in the preocessor. will be obsolete as soon as parameters gets ported to apvts
+   //         audioProcessor.frequency_mod = modFreqSlider.getValue() * powf(10, modFreq2Slider.getValue());
+   //         osc_mod->setFrequency(audioProcessor.frequency_mod, audioProcessor.current_samplerate.load());
+   //         modFreqTextResultButton.setButtonText(juce::String(audioProcessor.frequency_mod) + " HZ");
         }
         else if (slider == &ampSlider)
         {
