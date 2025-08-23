@@ -22,6 +22,15 @@ NotepadAudioProcessor::NotepadAudioProcessor()
                        )
 #endif
 {
+    // Initialize the bar count to zero
+    barCount.store(0);
+
+    // Create dummy BarRangeSheetData to have a first element
+    BarRangeSheetData dummy;
+    dummy.startBar = 1;
+    dummy.endBar = 4;
+    dummy.text = "First Sheet";
+    barRangeSheetData.push_back(dummy);
 }
 
 NotepadAudioProcessor::~NotepadAudioProcessor()
@@ -132,7 +141,39 @@ bool NotepadAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) 
 void NotepadAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
 {
     juce::ScopedNoDenormals noDenormals;
-    // auto totalNumOutputChannels = getTotalNumOutputChannels();
+
+	// Only call for the transport playhead in processBlock, according to the JUCE documentation
+	// In standalone mode, the playhead will be a nullptr
+    if (auto* playHead = getPlayHead())
+    {
+        if (auto position = playHead->getPosition())
+        {
+            auto barCountOpt = position->getBarCount();
+            auto ppqPos = position->getPpqPosition();
+
+            // Easiest way. Not all DAWs support this. (e.g. Reaper)
+            if (barCountOpt.hasValue())
+                barCount.store(*barCountOpt);
+            else if (ppqPos.hasValue())
+            {
+				auto timeSig = position->getTimeSignature();
+                if (timeSig.hasValue())
+                {
+                    // PPQ position divided by beats per bar gives us the bar number
+                    // Add 1 because bars typically start at 1, not 0
+                    double beatsPerBar = 4.0 * timeSig->numerator / timeSig->denominator;
+                    int calculatedBar = static_cast<int>((*ppqPos / beatsPerBar) + 1);
+                    barCount.store(calculatedBar);
+                }
+            }
+            else
+                barCount.store(-1);
+        }
+        else
+        {
+			DBG("Playhead position not available.");
+        }
+    }
     
     /*
     auto totalNumInputChannels  = getTotalNumInputChannels();
@@ -156,18 +197,39 @@ juce::AudioProcessorEditor* NotepadAudioProcessor::createEditor()
     return new NotepadAudioProcessorEditor (*this);
 }
 
-//==============================================================================
+// Remember that barRangeSheetData is the processors representation of the bar ranges
+// the Editor has its own representation with TextEditors
 void NotepadAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
 {
-    // You should use this method to store your parameters in the memory block.
-    // You could do that either as raw data, or use the XML or ValueTree classes
-    // as intermediaries to make it easy to save and load complex data.
+    juce::XmlElement xml("BarRangeSheetData");
+    for (const auto& sheet : barRangeSheetData)
+    {
+        juce::XmlElement* sheetXml = xml.createNewChildElement("Sheet");
+        sheetXml->setAttribute("startBar", sheet.startBar);
+        sheetXml->setAttribute("endBar", sheet.endBar);
+        sheetXml->setAttribute("text", sheet.text);
+    }
+    copyXmlToBinary(xml, destData);
 }
 
 void NotepadAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
 {
-    // You should use this method to restore your parameters from this memory block,
-    // whose contents will have been created by the getStateInformation() call.
+    std::unique_ptr<juce::XmlElement> xmlState(getXmlFromBinary(data, sizeInBytes));
+    if (xmlState != nullptr && xmlState->hasTagName("BarRangeSheetData"))
+    {
+        barRangeSheetData.clear();
+        forEachXmlChildElement(*xmlState, sheetXml)
+        {
+            if (sheetXml->hasTagName("Sheet"))
+            {
+                BarRangeSheetData sheet;
+                sheet.startBar = sheetXml->getIntAttribute("startBar");
+                sheet.endBar = sheetXml->getIntAttribute("endBar");
+                sheet.text = sheetXml->getStringAttribute("text");
+                barRangeSheetData.push_back(sheet);
+            }
+        }
+    }
 }
 
 //==============================================================================

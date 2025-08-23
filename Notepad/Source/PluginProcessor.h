@@ -10,6 +10,8 @@
 
 #include <JuceHeader.h>
 
+using namespace std;
+
 //==============================================================================
 /**
 */
@@ -56,7 +58,22 @@ public:
     void getStateInformation (juce::MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
 
+    // const always better for getters
+    // noexcept safe here, as atomic operation will not throw exception
+	int getBarCount() const noexcept { return barCount.load(); }
+
+    struct BarRangeSheetData {
+        int startBar;
+        int endBar;
+        juce::String text;
+    };
+    std::vector<BarRangeSheetData> barRangeSheetData;
+
+	const int DEFAULT_END_BAR = 1000; // Default end bar for new sheets
+
 private:
     //==============================================================================
+    atomic<int> barCount;
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (NotepadAudioProcessor)
 };

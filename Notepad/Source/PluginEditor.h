@@ -10,27 +10,44 @@
 
 #include <JuceHeader.h>
 #include "PluginProcessor.h"
+#include "BarRangeSheet.h"
+
+using namespace std;
 
 //==============================================================================
 /**
 */
-class NotepadAudioProcessorEditor  : public juce::AudioProcessorEditor, public juce::Timer
+class NotepadAudioProcessorEditor  : public juce::AudioProcessorEditor,
+                                     public juce::Timer,
+	                                 public juce::TextEditor::Listener
 {
 public:
     NotepadAudioProcessorEditor (NotepadAudioProcessor&);
     ~NotepadAudioProcessorEditor() override;
+
+    void textEditorTextChanged(juce::TextEditor& editor) override;
 
     void timerCallback() override;
     void paint (juce::Graphics&) override;
     void resized() override;
 
 private:
-    // This reference is provided as a quick way for your editor to
-    // access the processor object that created it.
+    BarRangeSheet* getActiveSheet(int currentBar);
+    void addBarRangeSheet(int startBar);
+    void removeBarRangeSheet(int index);
+
     NotepadAudioProcessor& audioProcessor;
 
     TextEditor textEditor;
-    AudioPlayHead::CurrentPositionInfo currentPositionInfo;
+
+	vector<unique_ptr<BarRangeSheet>> barRangeSheets;
+    BarRangeSheet* currentlyActiveSheet = nullptr;
+
+    // Buttons
+	juce::TextButton addSheetButton{ "Add Sheet" };
+	juce::TextButton removeSheetButton{ "Remove Sheet" };
+
+    // Buttons' Listeners
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (NotepadAudioProcessorEditor)
 };

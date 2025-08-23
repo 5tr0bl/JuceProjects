@@ -2,9 +2,10 @@
 
 <JUCERPROJECT id="iZPWik" name="Notepad" projectType="audioplug" useAppConfig="0"
               displaySplashScreen="1" jucerFormatVersion="1" companyName="Micha"
-              pluginVST3Category="Tools">
+              pluginVST3Category="Tools" pluginCharacteristicsValue="pluginWantsMidiIn">
   <MAINGROUP id="uGzGEQ" name="Notepad">
     <GROUP id="{2E61F753-ADB0-50FC-DB4B-42F0313E75A2}" name="Source">
+      <FILE id="YNH5Yn" name="BarRangeSheet.h" compile="0" resource="0" file="Source/BarRangeSheet.h"/>
       <FILE id="uQgItd" name="PluginProcessor.cpp" compile="1" resource="0"
             file="Source/PluginProcessor.cpp"/>
       <FILE id="CiFD6n" name="PluginProcessor.h" compile="0" resource="0"
