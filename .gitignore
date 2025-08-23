@@ -1,2 +1,5 @@
 Builds/
 JuceLibraryCode/
+
+# Exclude some projects
+Goniometer/
