@@ -61,10 +61,12 @@ public:
     // const always better for getters
     // noexcept safe here, as atomic operation will not throw exception
 	int getBarCount() const noexcept { return barCount.load(); }
+	bool getIsPlaying() const noexcept { return isPlaying.load(); }
 
     struct BarRangeSheetData {
         int startBar;
         int endBar;
+        juce::String barRangeHeader;
         juce::String text;
     };
     std::vector<BarRangeSheetData> barRangeSheetData;
@@ -74,6 +76,7 @@ public:
 private:
     //==============================================================================
     atomic<int> barCount;
+	atomic<bool> isPlaying;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (NotepadAudioProcessor)
 };

@@ -15,6 +15,12 @@ NotepadAudioProcessorEditor::NotepadAudioProcessorEditor (NotepadAudioProcessor&
 {
     
     setSize (400, 300);
+
+    // Header containing the bar range
+    addAndMakeVisible(barRangeLabel);
+    barRangeLabel.setJustificationType(juce::Justification::centred);
+    barRangeLabel.setFont(juce::Font(14.0f, juce::Font::bold));
+
     addAndMakeVisible(textEditor);
     textEditor.addListener(this);
     
@@ -29,12 +35,15 @@ NotepadAudioProcessorEditor::NotepadAudioProcessorEditor (NotepadAudioProcessor&
 		barRangeSheets.push_back(std::move(sheet));
     }
 
-    // Buttons
+    // Buttons for adding/removing note sheets
 	addAndMakeVisible(addSheetButton);
     addAndMakeVisible(removeSheetButton);
 
 	addSheetButton.setButtonText("Add Sheet");
 	removeSheetButton.setButtonText("Remove Sheet");
+
+	addSheetButton.setTooltip("Add a new Note starting from the current bar");
+	removeSheetButton.setTooltip("Remove the currently active Note");
 
     addSheetButton.onClick = [this]()
         {
@@ -59,6 +68,36 @@ NotepadAudioProcessorEditor::NotepadAudioProcessorEditor (NotepadAudioProcessor&
             }
 		};
 
+    // Buttons for manually sccrolling through note sheets
+    addAndMakeVisible(leftButton);
+    addAndMakeVisible(rightButton);
+
+    leftButton.setButtonText("<");
+    rightButton.setButtonText(">");
+
+	leftButton.setTooltip("Go to previous Note");
+    rightButton.setTooltip("Go to next Note.");
+    
+    leftButton.onClick = [this]()
+        {
+            if (!barRangeSheets.empty())
+            {
+                // Cycle through the sheets with wrap-around and take the previous one
+                manualSheetIndex = (manualSheetIndex - 1 + barRangeSheets.size()) % barRangeSheets.size();
+				updateActiveSheet(barRangeSheets[manualSheetIndex].get());
+            }
+        };
+    rightButton.onClick = [this]()
+        {
+            if (!barRangeSheets.empty())
+            {
+				// Cycle through the sheets with wrap-around and take the next one
+                manualSheetIndex = (manualSheetIndex + 1 + barRangeSheets.size()) % barRangeSheets.size();
+                updateActiveSheet(barRangeSheets[manualSheetIndex].get());
+            }
+        };
+
+    // Start Timer and play around with the frequency maybe
     startTimerHz(30);
 }
 
@@ -68,40 +107,64 @@ NotepadAudioProcessorEditor::~NotepadAudioProcessorEditor()
 
 void NotepadAudioProcessorEditor::textEditorTextChanged(juce::TextEditor& editor)
 {
-    // Check if the modified TextEditor is the main TextEditor
+    // Check if the modified TextEditor is the one from the Editor instance
 	// Check if an active sheet is currently being used
     if (&editor == &textEditor && currentlyActiveSheet)
     {
-		// Update the text in the currently active sheet
+		// Copy the Editor's text into the currently active sheet
         currentlyActiveSheet->textEditor.setText(editor.getText());
     }
 }
 
 void NotepadAudioProcessorEditor::timerCallback()
 {
-	// Fetch currently active sheet
-    const int currentBar = audioProcessor.getBarCount();
-    BarRangeSheet* activeSheet = getActiveSheet(currentBar);
-
-    // Check if active sheet has changed
-	if (activeSheet != currentlyActiveSheet)
+    BarRangeSheet* activeSheet;
+    const bool isPlaying = audioProcessor.getIsPlaying();
+    
+    if (isPlaying)
     {
-        currentlyActiveSheet = activeSheet;
+		// Fetch currently active sheet via the AudioProcessor's Playhead
+        const int currentBar = audioProcessor.getBarCount();
+        activeSheet = getActiveSheet(currentBar);
 
-        if (activeSheet)
+        // Check if active sheet has changed
+        if (activeSheet != currentlyActiveSheet)
         {
-            // Update the main editor with the content from the active sheet
-            textEditor.setText(activeSheet->textEditor.getText());
-            textEditor.setVisible(true);
-        }
-        else
-        {
-            // No active sheet for this bar range
-            textEditor.setVisible(false);
-        }
-	}
+            currentlyActiveSheet = activeSheet;
 
-    //textEditor.setText("Bar: " + String(currentBar));
+            if (activeSheet)
+            {
+                // Update the bar range label
+                barRangeLabel.setText(
+                    "Bars " + juce::String(activeSheet->startBar) + " to " + juce::String(activeSheet->endBar),
+                    juce::dontSendNotification);
+                // Update the main editor with the content from the active sheet
+                textEditor.setText(activeSheet->textEditor.getText());
+
+                barRangeLabel.setVisible(true);
+                textEditor.setVisible(true);
+            }
+        }
+        
+		// If playing, disable manual navigation buttons
+        leftButton.setEnabled(false);
+        rightButton.setEnabled(false);
+    }
+    else
+    {
+        leftButton.setEnabled(true);
+		rightButton.setEnabled(true);
+    }
+    
+
+    
+        
+    if(!activeSheet)
+    {
+        // No active sheet for this bar range
+        barRangeLabel.setVisible(false);
+        textEditor.setVisible(false);
+    }
 }
 
 //==============================================================================
@@ -114,9 +177,31 @@ void NotepadAudioProcessorEditor::paint (juce::Graphics& g)
 void NotepadAudioProcessorEditor::resized()
 {
     auto area = getLocalBounds();
+    barRangeLabel.setBounds(area.removeFromTop(24));
     textEditor.setBounds(area.removeFromTop(area.getHeight() - 40));
-    addSheetButton.setBounds(area.removeFromLeft(area.getWidth() / 2).reduced(5));
-    removeSheetButton.setBounds(area.reduced(5));
+
+    auto buttonArea = area;
+    leftButton.setBounds(buttonArea.removeFromLeft(buttonArea.getWidth() / 4).reduced(5));
+    addSheetButton.setBounds(buttonArea.removeFromLeft(buttonArea.getWidth() / 3).reduced(5));
+    removeSheetButton.setBounds(buttonArea.removeFromLeft(buttonArea.getWidth() / 2).reduced(5));
+    rightButton.setBounds(buttonArea.reduced(5));
+}
+
+// This gets called either after clicking manually through the note sheets
+// or when the playhead enters a different bar range
+void NotepadAudioProcessorEditor::updateActiveSheet(BarRangeSheet* newSheet)
+{
+    if (newSheet)
+    {
+        currentlyActiveSheet = newSheet;
+        barRangeLabel.setText(
+            "Bars " + juce::String(newSheet->startBar) + " to " + juce::String(newSheet->endBar),
+            juce::dontSendNotification);
+        textEditor.setText(newSheet->textEditor.getText());
+        barRangeLabel.setVisible(true);
+        textEditor.setVisible(true);
+    }
+        
 }
 
 BarRangeSheet* NotepadAudioProcessorEditor::getActiveSheet(int currentBar)
@@ -137,27 +222,36 @@ void NotepadAudioProcessorEditor::addBarRangeSheet(int startBar)
     while (insertIndex < barRangeSheets.size() && barRangeSheets[insertIndex]->startBar < startBar)
         ++insertIndex;
 
+	// Check for duplicates by not allowing two sheets with the same startBar
+	if (!barRangeSheets.empty())
+	{
+		// Check previous sheet if exists
+		if (insertIndex > 0 &&
+            insertIndex <= barRangeSheets.size() && 
+            barRangeSheets[insertIndex - 1]->startBar == startBar)
+			return;
+			
+		// Check next sheet if exists
+		if (insertIndex < barRangeSheets.size() && 
+            barRangeSheets[insertIndex]->startBar == startBar)
+			return;
+	}
+
     // Determine the end bar
-    int endBar = insertIndex > barRangeSheets.size()
-        ? barRangeSheets[++insertIndex]->startBar - 1
+    bool check = insertIndex < barRangeSheets.size();
+    int endBar = insertIndex < barRangeSheets.size()
+        ? barRangeSheets[insertIndex]->startBar - 1
         : audioProcessor.DEFAULT_END_BAR;
 
-	// Create dummy text for the new sheet
-	String dummyText = "Sheet for bars " + String(startBar) + " to " + String(endBar);
-
     // Create BarRangeSheet and insert ino the Editor's vector
-    auto sheet = std::make_unique<BarRangeSheet>();
-    sheet->startBar = startBar;
-    sheet->endBar = endBar;
-    sheet->textEditor.setText(dummyText);
-    //sheet->textEditor.addListener(this);
+    auto sheet = std::make_unique<BarRangeSheet>(startBar, endBar);
 	barRangeSheets.insert(barRangeSheets.begin() + insertIndex, std::move(sheet));
 
     // Create BarRangeSheetData and insert ino the Processor's vector
 	NotepadAudioProcessor::BarRangeSheetData sheetData;
     sheetData.startBar = startBar;
     sheetData.endBar = endBar;
-    sheetData.text = dummyText;
+    sheetData.text = BarRangeSheet::getDefaultTextEditorText();
 	audioProcessor.barRangeSheetData.insert(audioProcessor.barRangeSheetData.begin() + insertIndex, sheetData);
 
     // Update previous sheet's endBar

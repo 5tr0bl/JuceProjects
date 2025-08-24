@@ -22,14 +22,15 @@ NotepadAudioProcessor::NotepadAudioProcessor()
                        )
 #endif
 {
-    // Initialize the bar count to zero
+    // Initialize the member atomics
     barCount.store(0);
+	isPlaying.store(false);
 
     // Create dummy BarRangeSheetData to have a first element
     BarRangeSheetData dummy;
     dummy.startBar = 1;
-    dummy.endBar = 4;
-    dummy.text = "First Sheet";
+    dummy.endBar = DEFAULT_END_BAR;
+    dummy.text = "Enter your notes here...";
     barRangeSheetData.push_back(dummy);
 }
 
@@ -151,6 +152,9 @@ void NotepadAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce
             auto barCountOpt = position->getBarCount();
             auto ppqPos = position->getPpqPosition();
 
+            // set the isPlaying state for the Editor to fetch it
+            isPlaying.store(position->getIsPlaying());
+
             // Easiest way. Not all DAWs support this. (e.g. Reaper)
             if (barCountOpt.hasValue())
                 barCount.store(*barCountOpt);
@@ -159,9 +163,9 @@ void NotepadAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce
 				auto timeSig = position->getTimeSignature();
                 if (timeSig.hasValue())
                 {
-                    // PPQ position divided by beats per bar gives us the bar number
-                    // Add 1 because bars typically start at 1, not 0
                     double beatsPerBar = 4.0 * timeSig->numerator / timeSig->denominator;
+                    // PPQ position divided by beats per bar equals the bar number
+                    // Add 1 because bars typically start at 1, not 0
                     int calculatedBar = static_cast<int>((*ppqPos / beatsPerBar) + 1);
                     barCount.store(calculatedBar);
                 }
