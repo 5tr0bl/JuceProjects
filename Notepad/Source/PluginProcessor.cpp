@@ -29,7 +29,7 @@ NotepadAudioProcessor::NotepadAudioProcessor()
     // Create dummy BarRangeSheetData to have a first element
     BarRangeSheetData dummy;
     dummy.startBar = 1;
-    dummy.endBar = DEFAULT_END_BAR;
+    dummy.endBar = std::nullopt;
     dummy.text = "Enter your notes here...";
     barRangeSheetData.push_back(dummy);
 }
@@ -210,7 +210,7 @@ void NotepadAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
     {
         juce::XmlElement* sheetXml = xml.createNewChildElement("Sheet");
         sheetXml->setAttribute("startBar", sheet.startBar);
-        sheetXml->setAttribute("endBar", sheet.endBar);
+        sheetXml->setAttribute("endBar", getEndBarText(sheet.endBar));
         sheetXml->setAttribute("text", sheet.text);
     }
     copyXmlToBinary(xml, destData);
@@ -228,7 +228,24 @@ void NotepadAudioProcessor::setStateInformation (const void* data, int sizeInByt
             {
                 BarRangeSheetData sheet;
                 sheet.startBar = sheetXml->getIntAttribute("startBar");
-                sheet.endBar = sheetXml->getIntAttribute("endBar");
+
+				// We wrote the endBar as String to be able to store "End" as well
+                sheet.endBar = std::nullopt;
+				auto endBarStr = sheetXml->getStringAttribute("endBar");
+                if(endBarStr != "End")
+                { 
+                    try
+                    {
+                        endBarStr.getIntValue();
+                    }
+                    catch (...)
+                    {
+                        // what if there is any other String that cannot be convertzed to int?
+						juce::Logger::writeToLog("Error converting endBar to int");
+                    }
+                }
+                    
+                
                 sheet.text = sheetXml->getStringAttribute("text");
                 barRangeSheetData.push_back(sheet);
             }

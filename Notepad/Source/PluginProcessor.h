@@ -65,13 +65,20 @@ public:
 
     struct BarRangeSheetData {
         int startBar;
-        int endBar;
+        std::optional<int> endBar;
         juce::String barRangeHeader;
         juce::String text;
     };
     std::vector<BarRangeSheetData> barRangeSheetData;
 
-	const int DEFAULT_END_BAR = 1000; // Default end bar for new sheets
+	// Returns a text for the end bar displayed in a BarRangeLabel.
+	// Used in both Processor and Editor. 
+    inline juce::String getEndBarText(const std::optional<int> endBar)
+    {
+		return endBar.has_value() ? juce::String(endBar.value()) : "End";
+    }
+
+	//const int DEFAULT_END_BAR = -1; // Default end bar for new sheets
 
 private:
     //==============================================================================

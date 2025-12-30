@@ -135,8 +135,10 @@ void NotepadAudioProcessorEditor::timerCallback()
             if (activeSheet)
             {
                 // Update the bar range label
+                const juce::String startBarString = juce::String(activeSheet->startBar);
+                const juce::String endBarString = audioProcessor.getEndBarText(activeSheet->endBar);
                 barRangeLabel.setText(
-                    "Bars " + juce::String(activeSheet->startBar) + " to " + juce::String(activeSheet->endBar),
+                    "Bars " + startBarString + " to " + endBarString,
                     juce::dontSendNotification);
                 // Update the main editor with the content from the active sheet
                 textEditor.setText(activeSheet->textEditor.getText());
@@ -194,10 +196,14 @@ void NotepadAudioProcessorEditor::updateActiveSheet(BarRangeSheet* newSheet)
     if (newSheet)
     {
         currentlyActiveSheet = newSheet;
+
+        juce::String endBarText = audioProcessor.getEndBarText(newSheet->endBar);
+
         barRangeLabel.setText(
-            "Bars " + juce::String(newSheet->startBar) + " to " + juce::String(newSheet->endBar),
+            "Bars " + juce::String(newSheet->startBar) + " to " + juce::String(newSheet->endBar.value()),
             juce::dontSendNotification);
         textEditor.setText(newSheet->textEditor.getText());
+        
         barRangeLabel.setVisible(true);
         textEditor.setVisible(true);
     }
@@ -208,8 +214,14 @@ BarRangeSheet* NotepadAudioProcessorEditor::getActiveSheet(int currentBar)
 {
     for (auto& sheet : barRangeSheets)
     { 
-        if (currentBar >= sheet->startBar && currentBar <= sheet->endBar)
-            return sheet.get();
+        if (currentBar >= sheet->startBar)  // current bar is after this sheet's start bar
+        {
+            if (!sheet->endBar.has_value() ||                               // endBar = nullopt -> this is the last sheet
+                (sheet->endBar.has_value() && currentBar <= sheet->endBar)) // current bar is before this sheet's end bar
+                {
+                    return sheet.get();
+                }
+        }
     }
     
     return nullptr;
@@ -237,17 +249,23 @@ void NotepadAudioProcessorEditor::addBarRangeSheet(int startBar)
 			return;
 	}
 
-    // Determine the end bar
+    // Determine the end bar of new Sheet
     bool check = insertIndex < barRangeSheets.size();
-    int endBar = insertIndex < barRangeSheets.size()
-        ? barRangeSheets[insertIndex]->startBar - 1
-        : audioProcessor.DEFAULT_END_BAR;
+    std::optional<int> endBar = std::nullopt;
 
-    // Create BarRangeSheet and insert ino the Editor's vector
+    // Do we insert between two Sheets?
+    if (insertIndex < barRangeSheets.size())
+    {
+        // Set end bar of new Sheet depending of next Sheet's start bar
+        endBar = barRangeSheets[insertIndex]->startBar -1;
+    }
+        
+
+    // Create BarRangeSheet and insert into the Editor's vector
     auto sheet = std::make_unique<BarRangeSheet>(startBar, endBar);
 	barRangeSheets.insert(barRangeSheets.begin() + insertIndex, std::move(sheet));
 
-    // Create BarRangeSheetData and insert ino the Processor's vector
+    // Create BarRangeSheetData and insert into the Processor's vector
 	NotepadAudioProcessor::BarRangeSheetData sheetData;
     sheetData.startBar = startBar;
     sheetData.endBar = endBar;
