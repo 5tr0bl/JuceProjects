@@ -27,7 +27,6 @@ public:
 
     // public API
     void loadFromProcessor();
-    void commitToProcessor();
     void addSheetAt(int startBar);
     void removeSheetAt(int index);
 

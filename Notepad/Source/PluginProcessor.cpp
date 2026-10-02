@@ -234,15 +234,7 @@ void NotepadAudioProcessor::setStateInformation (const void* data, int sizeInByt
 				auto endBarStr = sheetXml->getStringAttribute("endBar");
                 if(endBarStr != "End")
                 { 
-                    try
-                    {
-                        endBarStr.getIntValue();
-                    }
-                    catch (...)
-                    {
-                        // what if there is any other String that cannot be convertzed to int?
-						juce::Logger::writeToLog("Error converting endBar to int");
-                    }
+                        sheet.endBar = endBarStr.getIntValue();
                 }
                     
                 

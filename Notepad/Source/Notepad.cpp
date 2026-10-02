@@ -76,19 +76,6 @@ void Notepad::loadFromProcessor()
 	resized(); // force layout update
 }
 
-void Notepad::commitToProcessor()
-{
-    audioProcessor.barRangeSheetData.clear();
-    for (const auto& s : sheets)
-    {
-        NotepadAudioProcessor::BarRangeSheetData d;
-        d.startBar = s->startBar;
-        d.endBar = s->endBar;
-        d.text = s->textEditor.getText();
-        audioProcessor.barRangeSheetData.push_back(d);
-    }
-}
-
 // find sheet with largest startBar <= currentBar
 BarRangeSheet* Notepad::getActiveSheetForBar(int currentBar)
 {
@@ -144,13 +131,15 @@ void Notepad::timerCallback()
 
 void Notepad::textEditorTextChanged(juce::TextEditor& editor)
 {
-    // find which sheet this editor belongs to, and update commit
-    for (const auto& s : sheets)
+	int sheetsSize = static_cast<int>(sheets.size());
+    for (int i = 0; i < sheetsSize; ++i)
     {
-        if (&s->textEditor == &editor)
+        // find which sheet this editor belongs to, and update commit
+        if (&sheets[i]->textEditor == &editor)
         {
-            commitToProcessor(); // commit on each change or batch as desired
-            break;
+			if (i >= 0 && i < static_cast<int>(audioProcessor.barRangeSheetData.size()))
+                audioProcessor.barRangeSheetData[i].text = editor.getText();
+            return;
         }
     }
 }
@@ -159,36 +148,35 @@ void Notepad::addSheetAt(int startBar)
 {
 	// Find insertion index (keep sheets sorted by startBar)
 	int insertIndex = 0;
-	while (insertIndex < static_cast<int>(sheets.size()) &&
-		sheets[insertIndex]->startBar < startBar)
+	while (insertIndex < static_cast<int>(audioProcessor.barRangeSheetData.size()) && audioProcessor.barRangeSheetData[insertIndex].startBar < startBar)
 		++insertIndex;
 
 	// Prevent duplicate startBar
-	if (!sheets.empty())
+	if (!audioProcessor.barRangeSheetData.empty())
 	{
-		if (insertIndex > 0 && sheets[insertIndex - 1]->startBar == startBar)
+		if (insertIndex > 0 && audioProcessor.barRangeSheetData[insertIndex - 1].startBar == startBar)
 			return;
-		if (insertIndex < static_cast<int>(sheets.size()) && sheets[insertIndex]->startBar == startBar)
+		if (insertIndex < static_cast<int>(audioProcessor.barRangeSheetData.size()) && audioProcessor.barRangeSheetData[insertIndex].startBar == startBar)
 			return;
 	}
 
 	// Determine endBar for the new sheet (if inserting before another sheet)
 	std::optional<int> endBar = std::nullopt;
-	if (insertIndex < static_cast<int>(sheets.size()))
-		endBar = sheets[insertIndex]->startBar - 1;
+	if (insertIndex < static_cast<int>(audioProcessor.barRangeSheetData.size()))
+		endBar = audioProcessor.barRangeSheetData[insertIndex].startBar - 1;
 
-	// Create UI sheet
-	auto newSheet = std::make_unique<BarRangeSheet>(startBar, endBar);
-	newSheet->textEditor.setText(BarRangeSheet::getDefaultTextEditorText());
-	newSheet->textEditor.addListener(this);
-	
-	// Add the sheet component (sheet owns its TextEditor)
-	addAndMakeVisible(*newSheet);
+	//// Create UI sheet
+	//auto newSheet = std::make_unique<BarRangeSheet>(startBar, endBar);
+	//newSheet->textEditor.setText(BarRangeSheet::getDefaultTextEditorText());
+	//newSheet->textEditor.addListener(this);
+	//
+	//// Add the sheet component (sheet owns its TextEditor)
+	//addAndMakeVisible(*newSheet);
 
 	// Insert into UI vector
-	sheets.insert(sheets.begin() + insertIndex, std::move(newSheet));
+	//sheets.insert(sheets.begin() + insertIndex, std::move(newSheet));
 
-	// Create and insert processor-side data
+	// Create and insert into processor-side vector
 	NotepadAudioProcessor::BarRangeSheetData sheetData;
 	sheetData.startBar = startBar;
 	sheetData.endBar = endBar;
@@ -198,27 +186,48 @@ void Notepad::addSheetAt(int startBar)
 	// Update previous sheet's endBar if there is a previous sheet
 	if (insertIndex > 0)
 	{
-		sheets[insertIndex - 1]->endBar = startBar - 1;
+		//sheets[insertIndex - 1]->endBar = startBar - 1;
 		audioProcessor.barRangeSheetData[insertIndex - 1].endBar = startBar - 1;
 	}
 
 	// Make the newly inserted sheet active and visible
-	updateActiveSheet(sheets[insertIndex].get());
+	//updateActiveSheet(audioProcessor.barRangeSheetData[insertIndex].get());
 
     // Try to fix the issue that sheets are not visible after adding the,m
-	resized(); // force layout update
+	//resized(); // force layout update
     
     // After insertion:
-    commitToProcessor();
-    //loadFromProcessor(); // or better: mutate the in-memory sheets and add children
+    //commitToProcessor();
+    loadFromProcessor(); // or better: mutate the in-memory sheets and add children
 }
 
 void Notepad::removeSheetAt(int index)
 {
-    if (index < 0 || index >= static_cast<int>(sheets.size()))
+    if (index < 0 || index >= static_cast<int>(audioProcessor.barRangeSheetData.size()))
         return;
-    sheets.erase(sheets.begin() + index);
-    commitToProcessor();
+    
+    audioProcessor.barRangeSheetData.erase(audioProcessor.barRangeSheetData.begin() + index);
+
+    // Update previous sheets' endBars
+    if (index > 0 && index <= static_cast<int>(audioProcessor.barRangeSheetData.size()))
+    {
+        // did we remove the last sheet?
+        if (index == static_cast<int>(audioProcessor.barRangeSheetData.size()))
+        {
+			//sheets[index - 1]->endBar = std::nullopt;
+			audioProcessor.barRangeSheetData[index - 1].endBar = std::nullopt;
+        }
+        else
+        {
+			//sheets[index - 1]->endBar = sheets[index]->startBar - 1;
+			audioProcessor.barRangeSheetData[index - 1].endBar = audioProcessor.barRangeSheetData[index].startBar - 1;
+        }
+    }
+
+	// the removed sheet is still "the active one" after removal, so update the active sheet to the one that now contains the current bar
+    //updateActiveSheet(getActiveSheetForBar(audioProcessor.getBarCount()));
+
+    loadFromProcessor();
 }
 
 void Notepad::paint(juce::Graphics& g)
