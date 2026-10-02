@@ -22,6 +22,8 @@ public:
         textEditor.setCaretVisible(true);
         textEditor.setScrollbarsShown(true);
         textEditor.setText(getDefaultTextEditorText());
+
+		addAndMakeVisible(textEditor);
     }
 
     BarRangeSheet(int startBar, int endBar) : BarRangeSheet()
@@ -45,6 +47,7 @@ public:
     
     void resized() override
     {
+        textEditor.setBounds(getLocalBounds().reduced(6));
     }
 
     int startBar;

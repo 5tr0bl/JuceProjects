@@ -11,6 +11,7 @@
 #include <JuceHeader.h>
 #include "PluginProcessor.h"
 #include "BarRangeSheet.h"
+#include "TabOverview.h"
 
 using namespace std;
 
@@ -38,6 +39,8 @@ private:
     void removeBarRangeSheet(int index);
 
     NotepadAudioProcessor& audioProcessor;
+
+    TabOverview tabOverview;
 
     juce::Label barRangeLabel;
     TextEditor textEditor;

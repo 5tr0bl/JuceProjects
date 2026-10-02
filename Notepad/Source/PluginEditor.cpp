@@ -11,9 +11,8 @@
 
 //==============================================================================
 NotepadAudioProcessorEditor::NotepadAudioProcessorEditor (NotepadAudioProcessor& p)
-    : AudioProcessorEditor (&p), audioProcessor (p)
+    : AudioProcessorEditor (&p), audioProcessor (p), tabOverview(p)
 {
-    
     setSize (400, 300);
 
     // Header containing the bar range
@@ -21,8 +20,10 @@ NotepadAudioProcessorEditor::NotepadAudioProcessorEditor (NotepadAudioProcessor&
     barRangeLabel.setJustificationType(juce::Justification::centred);
     barRangeLabel.setFont(juce::Font(14.0f, juce::Font::bold));
 
-    addAndMakeVisible(textEditor);
-    textEditor.addListener(this);
+    addAndMakeVisible(tabOverview);
+    
+    //addAndMakeVisible(textEditor);
+    //textEditor.addListener(this);
     
 	// Copy the BarRangeSheetData from the processor to the editor's barRangeSheets
     for(const auto& sheetData : audioProcessor.barRangeSheetData)
@@ -36,15 +37,14 @@ NotepadAudioProcessorEditor::NotepadAudioProcessorEditor (NotepadAudioProcessor&
     }
 
     // Buttons for adding/removing note sheets
-	addAndMakeVisible(addSheetButton);
-    addAndMakeVisible(removeSheetButton);
+	//addAndMakeVisible(addSheetButton);
+    //addAndMakeVisible(removeSheetButton);
 
-	addSheetButton.setButtonText("Add Sheet");
-	removeSheetButton.setButtonText("Remove Sheet");
+	//addSheetButton.setButtonText("Add Sheet");
+	//removeSheetButton.setButtonText("Remove Sheet");
 
-	addSheetButton.setTooltip("Add a new Note starting from the current bar");
-	removeSheetButton.setTooltip("Remove the currently active Note");
-
+	
+    /*
     addSheetButton.onClick = [this]()
         {
             // Add a new BarRangeSheet starting from the current bar
@@ -67,17 +67,17 @@ NotepadAudioProcessorEditor::NotepadAudioProcessorEditor (NotepadAudioProcessor&
                 }
             }
 		};
+    */
 
     // Buttons for manually sccrolling through note sheets
-    addAndMakeVisible(leftButton);
-    addAndMakeVisible(rightButton);
+    //addAndMakeVisible(leftButton);
+    //addAndMakeVisible(rightButton);
 
-    leftButton.setButtonText("<");
-    rightButton.setButtonText(">");
+    //leftButton.setButtonText("<");
+    //rightButton.setButtonText(">");
 
-	leftButton.setTooltip("Go to previous Note");
-    rightButton.setTooltip("Go to next Note.");
-    
+	
+    /*
     leftButton.onClick = [this]()
         {
             if (!barRangeSheets.empty())
@@ -99,6 +99,8 @@ NotepadAudioProcessorEditor::NotepadAudioProcessorEditor (NotepadAudioProcessor&
 
     // Start Timer and play around with the frequency maybe
     startTimerHz(30);
+
+    */
 }
 
 NotepadAudioProcessorEditor::~NotepadAudioProcessorEditor()
@@ -134,6 +136,7 @@ void NotepadAudioProcessorEditor::timerCallback()
 
             if (activeSheet)
             {
+
                 // Update the bar range label
                 const juce::String startBarString = juce::String(activeSheet->startBar);
                 const juce::String endBarString = audioProcessor.getEndBarText(activeSheet->endBar);
@@ -180,7 +183,9 @@ void NotepadAudioProcessorEditor::resized()
 {
     auto area = getLocalBounds();
     barRangeLabel.setBounds(area.removeFromTop(24));
-    textEditor.setBounds(area.removeFromTop(area.getHeight() - 40));
+    //textEditor.setBounds(area.removeFromTop(area.getHeight() - 40));
+    tabOverview.setBounds(area.removeFromTop(area.getHeight() - 40));
+
 
     auto buttonArea = area;
     leftButton.setBounds(buttonArea.removeFromLeft(buttonArea.getWidth() / 4).reduced(5));
@@ -198,10 +203,9 @@ void NotepadAudioProcessorEditor::updateActiveSheet(BarRangeSheet* newSheet)
         currentlyActiveSheet = newSheet;
 
         juce::String endBarText = audioProcessor.getEndBarText(newSheet->endBar);
+        barRangeLabel.setText("Bars " + juce::String(newSheet->startBar) + " to " + endBarText,
+                              juce::dontSendNotification);
 
-        barRangeLabel.setText(
-            "Bars " + juce::String(newSheet->startBar) + " to " + juce::String(newSheet->endBar.value()),
-            juce::dontSendNotification);
         textEditor.setText(newSheet->textEditor.getText());
         
         barRangeLabel.setVisible(true);

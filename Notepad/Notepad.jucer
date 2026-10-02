@@ -2,14 +2,20 @@
 
 <JUCERPROJECT id="iZPWik" name="Notepad" projectType="audioplug" useAppConfig="0"
               displaySplashScreen="1" jucerFormatVersion="1" companyName="Micha"
-              pluginVST3Category="Tools" pluginCharacteristicsValue="pluginWantsMidiIn">
+              pluginVST3Category="Tools" pluginCharacteristicsValue="pluginWantsMidiIn"
+              pluginFormats="buildVST3">
   <MAINGROUP id="uGzGEQ" name="Notepad">
     <GROUP id="{2E61F753-ADB0-50FC-DB4B-42F0313E75A2}" name="Source">
+      <FILE id="vJ44V2" name="Notepad.h" compile="0" resource="0" file="Source/Notepad.h"/>
+      <FILE id="pGa1u5" name="Notepad.cpp" compile="1" resource="0" file="Source/Notepad.cpp"/>
+      <FILE id="SOleRG" name="TabulatureView.h" compile="0" resource="0"
+            file="Source/TabulatureView.h"/>
       <FILE id="YNH5Yn" name="BarRangeSheet.h" compile="0" resource="0" file="Source/BarRangeSheet.h"/>
       <FILE id="uQgItd" name="PluginProcessor.cpp" compile="1" resource="0"
             file="Source/PluginProcessor.cpp"/>
       <FILE id="CiFD6n" name="PluginProcessor.h" compile="0" resource="0"
             file="Source/PluginProcessor.h"/>
+      <FILE id="ZYVa58" name="TabOverview.h" compile="0" resource="0" file="Source/TabOverview.h"/>
       <FILE id="nfq7Bh" name="PluginEditor.cpp" compile="1" resource="0"
             file="Source/PluginEditor.cpp"/>
       <FILE id="r5KELy" name="PluginEditor.h" compile="0" resource="0" file="Source/PluginEditor.h"/>
